@@ -93,10 +93,9 @@ for i in range(len(df_list)):
     df = df.groupby(["exercise_type", "window"]).agg({column: ["min","max","mean","std"] for column in df.columns.difference(["exercise_type", "window"])})
     df_list[i] = df
 
-#print(df_list[0])
 df_concat = pd.concat(df_list, axis=1)
 df_concat.reset_index(inplace=True)
-# df_concat.drop("window", axis=1, inplace=True)
+df_concat.drop("window", axis=1, inplace=True)
 temp = df_concat.pop("exercise_type")
 df_concat["exercise_type"] = temp
 print(df_concat)
