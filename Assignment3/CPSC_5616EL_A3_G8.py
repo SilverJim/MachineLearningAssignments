@@ -52,7 +52,7 @@ for file_name, data_set_name in data_set:
                 df.rename(columns={column: f"{data_set_name}_{column}"}, inplace=True)
         value_columns = list(set(df.columns) - non_value_columns_set)
         # Noise Reduction
-        df[value_columns] = df[value_columns].rolling(10).mean()
+        df[value_columns] = df[value_columns].rolling(50).mean()
         df.dropna(inplace=True)
         # remove the data at beginning and end of each exercise, as the excercise has not started or has ended
         df = df[(df["seconds_elapsed"].quantile(0.1) < df["seconds_elapsed"]) & (df['seconds_elapsed'] < df['seconds_elapsed'].quantile(0.9))]
@@ -62,7 +62,8 @@ for file_name, data_set_name in data_set:
     df_list.append(pd.concat(temp_df_list))
     
 # Normalization
-for df in df_list:
+for i in range(len(df_list)):
+    df = df_list[i]
     value_columns = list(set(df.columns) - non_value_columns_set)
     scaler = ColumnTransformer(
         [
@@ -72,8 +73,31 @@ for df in df_list:
         ],
     )
     scaled_data = scaler.fit_transform(df)
-    df = pd.DataFrame(scaled_data, columns=value_columns + non_value_columns)
-    print(df)
+    df_list[i] = pd.DataFrame(scaled_data, columns=value_columns + non_value_columns)
+    
 # %%
-window_size = 10
+windows_count = 9
+seconds_elapsed_min = {}
+windows_size = {}
+for item in exercise_types:
+    exercise_type = item["name"]
+    seconds_elapsed_min[exercise_type] = min((df[df["exercise_type"] == exercise_type]["seconds_elapsed"].min() for df in df_list))
+    seconds_elapsed_max = max((df[df["exercise_type"] == exercise_type]["seconds_elapsed"].max() for df in df_list)) + 0.0000001
+    windows_size[exercise_type] = (seconds_elapsed_max - seconds_elapsed_min[exercise_type]) / windows_count
+print(seconds_elapsed_min, windows_size)
 
+for i in range(len(df_list)):
+    df = df_list[i]
+    df["window"] = df[["seconds_elapsed", "exercise_type"]].apply(lambda row: math.floor((row["seconds_elapsed"] - seconds_elapsed_min[row["exercise_type"]]) / windows_size[row["exercise_type"]]), axis=1)
+    df.drop("seconds_elapsed", axis=1, inplace=True)
+    df = df.groupby(["exercise_type", "window"]).agg({column: ["min","max","mean","std"] for column in df.columns.difference(["exercise_type", "window"])})
+    df_list[i] = df
+
+#print(df_list[0])
+df_concat = pd.concat(df_list, axis=1)
+df_concat.reset_index(inplace=True)
+# df_concat.drop("window", axis=1, inplace=True)
+temp = df_concat.pop("exercise_type")
+df_concat["exercise_type"] = temp
+print(df_concat)
+# %%
