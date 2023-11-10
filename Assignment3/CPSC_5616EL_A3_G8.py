@@ -5,12 +5,12 @@ import pandas as pd
 import sys
 import math
 from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score, classification_report, confusion_matrix
 from sklearn.compose import ColumnTransformer
 from imblearn.over_sampling import RandomOverSampler
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
 
 #%%
 
@@ -98,5 +98,37 @@ df_concat.reset_index(inplace=True)
 df_concat.drop("window", axis=1, inplace=True)
 temp = df_concat.pop("exercise_type")
 df_concat["exercise_type"] = temp
+# %%
+category_dict = {"Jumping_Jack": 0, "Lunges": 1, "Squat": 2}
+df_concat["exercise_type"] = df_concat["exercise_type"].apply(lambda x: category_dict[x])
+train_df, test_df = train_test_split(df_concat, train_size=0.8, random_state=0)
 print(df_concat)
+def divide_Xy(df, oversample=True):
+    data = df.to_numpy()
+    X = data[:, :-1]
+    y = data[:, -1]
+    if oversample:
+        ros = RandomOverSampler(random_state=0)
+        X, y = ros.fit_resample(X, y)
+    return data, X, y
+train_data, train_X, train_y = divide_Xy(train_df)
+test_data, test_X, test_y = divide_Xy(test_df, oversample=False)
+# %%
+svm_model = SVC(kernel='linear', C=1)
+svm_model.fit(train_X, train_y)
+
+def evaluate_model(model, X, y):
+    predicted_y = model.predict(X)
+    print(classification_report(y, predicted_y))
+
+    confusion_mat = confusion_matrix(y, predicted_y)
+    print(f"Confusion matrix: \n{confusion_mat}")
+print("Evaluation of SVM model:")
+evaluate_model(svm_model, test_X, test_y)
+# %%
+
+rf_model = RandomForestClassifier(n_estimators=100, max_depth=2, random_state=0)
+rf_model.fit(train_X, train_y)
+print("Evaluation of Random Forest model:")
+evaluate_model(rf_model, test_X, test_y)
 # %%
