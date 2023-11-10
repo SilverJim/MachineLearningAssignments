@@ -11,6 +11,7 @@ from sklearn.compose import ColumnTransformer
 from imblearn.over_sampling import RandomOverSampler
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import GridSearchCV
 
 #%%
 
@@ -113,9 +114,20 @@ def divide_Xy(df, oversample=True):
     return data, X, y
 train_data, train_X, train_y = divide_Xy(train_df)
 test_data, test_X, test_y = divide_Xy(test_df, oversample=False)
+print("train_X:")
+print(train_X)
+print("train_y:")
+print(train_y)
+print("test_X:")
+print(test_X)
+print("test_y:")
+print(test_y)
 # %%
-svm_model = SVC(kernel='linear', C=1)
-svm_model.fit(train_X, train_y)
+svm_model = SVC()
+svm_grid_search = GridSearchCV(svm_model, {"kernel": ["linear", "poly", "rbf", "sigmoid"], 'C': [0.1, 1, 10]}, cv=5)
+svm_grid_search.fit(train_X, train_y)
+print(f"Best parameters for SVM model:\n{svm_grid_search.best_params_}")
+svm_model = svm_grid_search.best_estimator_
 
 def evaluate_model(model, X, y):
     predicted_y = model.predict(X)
@@ -127,8 +139,11 @@ print("Evaluation of SVM model:")
 evaluate_model(svm_model, test_X, test_y)
 # %%
 
-rf_model = RandomForestClassifier(n_estimators=100, max_depth=2, random_state=0)
-rf_model.fit(train_X, train_y)
+rf_model = RandomForestClassifier()
+rf_grid_search = GridSearchCV(rf_model, {"n_estimators": [10, 100, 1000], "max_depth": [2, 5, 10]}, cv=5)
+rf_grid_search.fit(train_X, train_y)
+print(f"Best parameters for Random Forest model:\n{rf_grid_search.best_params_}")
+rf_model = rf_grid_search.best_estimator_
 print("Evaluation of Random Forest model:")
 evaluate_model(rf_model, test_X, test_y)
 # %%
