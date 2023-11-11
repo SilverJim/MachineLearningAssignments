@@ -82,35 +82,46 @@ for i in range(len(df_list)):
     df_list[i] = pd.DataFrame(scaled_data, columns=value_columns + non_value_columns)
     
 # %%
-# Window by dividing the data of each exercise into 9 eaqual parts
-windows_count = 9
-seconds_elapsed_min = {}
-windows_size = {}
-for item in exercise_types:
-    exercise_type = item["name"]
-    seconds_elapsed_min[exercise_type] = min((df[df["exercise_type"] == exercise_type]["seconds_elapsed"].min() for df in df_list))
-    seconds_elapsed_max = max((df[df["exercise_type"] == exercise_type]["seconds_elapsed"].max() for df in df_list)) + 0.0000001
-    windows_size[exercise_type] = (seconds_elapsed_max - seconds_elapsed_min[exercise_type]) / windows_count
-print(seconds_elapsed_min, windows_size)
+# Window by dividing the data of each exercise into eaqual parts to apply data augmentation we use several different window sizes
+windows_count_list = [8, 9, 10, 11, 12]
+df_concat_list = []
+for windows_count in windows_count_list:
+    seconds_elapsed_min = {}
+    windows_size = {}
+    for item in exercise_types:
+        exercise_type = item["name"]
+        seconds_elapsed_min[exercise_type] = min((df[df["exercise_type"] == exercise_type]["seconds_elapsed"].min() for df in df_list))
+        seconds_elapsed_max = max((df[df["exercise_type"] == exercise_type]["seconds_elapsed"].max() for df in df_list)) + 0.0000001
+        windows_size[exercise_type] = (seconds_elapsed_max - seconds_elapsed_min[exercise_type]) / windows_count
+    print(seconds_elapsed_min, windows_size)
 
-# process window and calculate min, max, mean, std value of each window
-for i in range(len(df_list)):
-    df = df_list[i]
-    df["window"] = df[["seconds_elapsed", "exercise_type"]].apply(lambda row: math.floor((row["seconds_elapsed"] - seconds_elapsed_min[row["exercise_type"]]) / windows_size[row["exercise_type"]]), axis=1)
-    df.drop("seconds_elapsed", axis=1, inplace=True)
-    df = df.groupby(["exercise_type", "window"]).agg({column: ["min","max","mean","std"] for column in df.columns.difference(["exercise_type", "window"])})
-    df_list[i] = df
-# join the dataframe from all the dataset together according to index "windows" and "exercise_type"
-df_concat = pd.concat(df_list, axis=1)
+    # process window and calculate min, max, mean, std value of each window
+    df_list_temp = []
+    for df in df_list:
+        df = df.copy()
+        df["window"] = df[["seconds_elapsed", "exercise_type"]].apply(lambda row: math.floor((row["seconds_elapsed"] - seconds_elapsed_min[row["exercise_type"]]) / windows_size[row["exercise_type"]]), axis=1)
+        df.drop("seconds_elapsed", axis=1, inplace=True)
+        df = df.groupby(["exercise_type", "window"]).agg({column: ["min","max","mean","std"] for column in df.columns.difference(["exercise_type", "window"])})
+        df_list_temp.append(df)
+    # join the dataframe from all the dataset together according to index "windows" and "exercise_type"
+    df_concat_temp = pd.concat(df_list_temp, axis=1)
+    df_concat_temp["windows_count"] = windows_count
+    df_concat_list.append(df_concat_temp)
+df_concat = pd.concat(df_concat_list)
 df_concat.reset_index(inplace=True)
-df_concat.drop("window", axis=1, inplace=True)
 # Make the exercise_type the last column
 temp = df_concat.pop("exercise_type")
 df_concat["exercise_type"] = temp
-# %%
-# Split the data into train data and test data
-train_df, test_df = train_test_split(df_concat, train_size=0.8, random_state=0)
 print(df_concat)
+# %%
+# Split the data into train data and test data, to avoid train data mixed into test data spilit it by time series
+train_df = df_concat[(df_concat["window"] + 1) / df_concat["windows_count"] < 0.8].copy()
+train_df.drop(["window", "windows_count"], axis=1, level=0, inplace=True)
+test_df = df_concat[df_concat["window"] / df_concat["windows_count"] >= 0.8].copy()
+test_df.drop(["window", "windows_count"], axis=1, level=0, inplace=True)
+print(train_df)
+print(test_df)
+
 # Define a function to divide the data into X and y
 def divide_Xy(df, oversample=True):
     data = df.to_numpy()
