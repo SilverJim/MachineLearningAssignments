@@ -147,6 +147,7 @@ print("test_y:")
 print(test_y)
 # %%
 # Using GridSearchCV to find the SVC model with best parameters
+print("Finding best parameters for SVM model:")
 svm_model = SVC()
 svm_grid_search = GridSearchCV(svm_model, {"kernel": ["linear", "poly", "rbf", "sigmoid"], 'C': [0.1, 1, 10]}, cv=5)
 svm_grid_search.fit(train_X, train_y)
@@ -166,6 +167,7 @@ print("Evaluation of SVM model:")
 evaluate_model(svm_model, test_X, test_y)
 # %%
 # Using GridSearchCV to find the RandomForestClassifier model with best parameters
+print("Finding best parameters for Random Forest model:")
 rf_model = RandomForestClassifier()
 rf_grid_search = GridSearchCV(rf_model, {"n_estimators": [10, 100, 1000], "max_depth": [2, 5, 10]}, cv=5)
 rf_grid_search.fit(train_X, train_y)
