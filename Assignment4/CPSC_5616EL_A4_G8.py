@@ -9,9 +9,11 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score, classification_report, confusion_matrix
 from sklearn.compose import ColumnTransformer
 from imblearn.over_sampling import RandomOverSampler
-from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import GridSearchCV
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torchvision
+import torchvision.transforms as transforms
 
 #%%
 # All the data should put into the data folder
@@ -158,35 +160,10 @@ print(test_X)
 print("test_y:")
 print(test_y)
 # %%
-# Using GridSearchCV to find the SVC model with best parameters
-svm_model = SVC()
-svm_grid_search = GridSearchCV(svm_model, {"kernel": ["linear", "poly", "rbf", "sigmoid"], 'C': [0.1, 1, 10]}, cv=5)
-print("Finding best parameters for SVM model...")
-svm_grid_search.fit(train_X, train_y)
-print(f"Best parameters for SVM model:\n{svm_grid_search.best_params_}")
-svm_model = svm_grid_search.best_estimator_
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Device:{device}")
+class CNN(nn.Module):
+    
 
-# Defind a function to evaluate the models
-def evaluate_model(model, X, y):
-    predicted_y = model.predict(X)
-    print(classification_report(y, predicted_y))
-
-    confusion_mat = confusion_matrix(y, predicted_y)
-    print(f"Confusion matrix: \n{confusion_mat}")
-
-# Evaluate the the SVC model
-print("Evaluation of SVM model:")
 evaluate_model(svm_model, test_X, test_y)
-# %%
-# Using GridSearchCV to find the RandomForestClassifier model with best parameters
-rf_model = RandomForestClassifier()
-rf_grid_search = GridSearchCV(rf_model, {"n_estimators": [10, 100, 1000], "max_depth": [2, 5, 10]}, cv=5)
-print("Finding best parameters for Random Forest model...")
-rf_grid_search.fit(train_X, train_y)
-print(f"Best parameters for Random Forest model:\n{rf_grid_search.best_params_}")
-rf_model = rf_grid_search.best_estimator_
-
-# Evaluate the the RandomForestClassifier model
-print("Evaluation of Random Forest model:")
-evaluate_model(rf_model, test_X, test_y)
 # %%
