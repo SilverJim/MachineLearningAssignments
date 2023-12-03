@@ -31,7 +31,7 @@ data_path = f"{data_path_prefix}/{data_filename}"
 print(f"Loading data from data path: {data_path}")
 
 # Define the exercise types
-exercise_types = [
+data_sets = [
    {"path": "Jumping_Jack_x10", "name": "Jumping_Jack"}, 
    {"path": "Lunges_x10", "name": "Lunges"}, 
    {"path": "Squat_x10", "name": "Squat"}, 
@@ -45,18 +45,18 @@ data_set = [("Accelerometer.csv", "Accelerometer"), ("TotalAcceleration.csv", "T
 
 df_list = []
 
-# In all the data set after "time" is removed, only "seconds_elapsed" and "exercise_type" are non-value columns
-non_value_columns = ["seconds_elapsed", "exercise_type"]
+# In all the data set after "time" is removed, only "seconds_elapsed" and "data_set" are non-value columns
+non_value_columns = ["seconds_elapsed", "data_set"]
 non_value_columns_set = set(non_value_columns)
 # read every dataset in every exercise type
 for file_name, data_set_name in data_set:
     temp_df_list = []
-    for exercise_type in exercise_types:
-        df = pd.read_csv(f"{data_path}/{exercise_type['path']}/{file_name}")
+    for data_set in data_sets:
+        df = pd.read_csv(f"{data_path}/{data_set['path']}/{file_name}")
         # There is "seconds_elapsed" so "time" is not necessary
         df.drop("time", axis=1, inplace=True)
-        # add the exercise_type column according to which exercise the data from
-        df['exercise_type'] = exercise_type['name']
+        # add the data_set column according to which exercise the data from
+        df['data_set'] = data_set['name']
         # Rename the columns according to which dataset the data from to avoid same column
         for column in df.columns:
             if column not in non_value_columns_set:
@@ -93,32 +93,32 @@ df_concat_list = []
 for windows_count in windows_count_list:
     seconds_elapsed_min = {}
     windows_size = {}
-    for item in exercise_types:
-        exercise_type = item["name"]
-        seconds_elapsed_min[exercise_type] = min((df[df["exercise_type"] == exercise_type]["seconds_elapsed"].min() for df in df_list))
-        seconds_elapsed_max = max((df[df["exercise_type"] == exercise_type]["seconds_elapsed"].max() for df in df_list)) + 0.0000001
-        windows_size[exercise_type] = (seconds_elapsed_max - seconds_elapsed_min[exercise_type]) / windows_count
+    for item in data_sets:
+        data_set = item["name"]
+        seconds_elapsed_min[data_set] = min((df[df["data_set"] == data_set]["seconds_elapsed"].min() for df in df_list))
+        seconds_elapsed_max = max((df[df["data_set"] == data_set]["seconds_elapsed"].max() for df in df_list)) + 0.0000001
+        windows_size[data_set] = (seconds_elapsed_max - seconds_elapsed_min[data_set]) / windows_count
     print(seconds_elapsed_min, windows_size)
 
     # process window and calculate min, max, mean, std value of each window
     df_list_temp = []
     for df in df_list:
         df = df.copy()
-        df["window"] = df[["seconds_elapsed", "exercise_type"]].apply(lambda row: math.floor((row["seconds_elapsed"] - seconds_elapsed_min[row["exercise_type"]]) / windows_size[row["exercise_type"]]), axis=1)
+        df["window"] = df[["seconds_elapsed", "data_set"]].apply(lambda row: math.floor((row["seconds_elapsed"] - seconds_elapsed_min[row["data_set"]]) / windows_size[row["data_set"]]), axis=1)
+        df = df.sort_values(["data_set", "window", "seconds_elapsed"])
         df.drop("seconds_elapsed", axis=1, inplace=True)
-        df = df.groupby(["exercise_type", "window"]).agg({column: ["min","max","mean","std"] for column in df.columns.difference(["exercise_type", "window"])})
+        df = df.groupby(["data_set", "window"], group_keys=True).apply(lambda x: np.array(x[[column for column in df.columns if column not in {"data_set", "window"}]])).to_frame()
         df_list_temp.append(df)
-    # join the dataframe from all the dataset together according to index "windows" and "exercise_type"
+    # join the dataframe from all the dataset together according to index "windows" and "data_set"
     df_concat_temp = pd.concat(df_list_temp, axis=1)
     df_concat_temp["windows_count"] = windows_count
     df_concat_list.append(df_concat_temp)
 df_concat = pd.concat(df_concat_list)
 df_concat.reset_index(inplace=True)
-# Make the exercise_type the last column
-temp = df_concat.pop("exercise_type")
-df_concat["exercise_type"] = temp
-print(df_concat)
-exercise_type_mappping = {
+# Make the data_set the last column
+temp = df_concat.pop("data_set")
+df_concat["data_set"] = temp
+data_set_mappping = {
     "Jumping_Jack": "Jumping_Jack",
     "Lunges": "Lunges",
     "Squat": "Squat",
@@ -126,13 +126,19 @@ exercise_type_mappping = {
     "Lunges_new": "Lunges",
     "Squat_new": "Squat"
 }
-df_concat["exercise_type"] = df_concat["exercise_type"].map(exercise_type_mappping)
+df_concat["exercise_type"] = df_concat["data_set"].map(data_set_mappping)
+df_concat.drop(["data_set"], axis=1, inplace=True)
+
+# %%
+df_concat["features"] = df_concat.apply(lambda x:np.concatenate([x[0], x[1], x[2]]), axis=1)
+df_concat.drop([0, 1, 2], axis=1, inplace=True)
+print(df_concat[0])
 # %%
 # Split the data into train data and test data, to avoid train data mixed into test data spilit it by time series
 train_df = df_concat[(df_concat["window"] + 1) / df_concat["windows_count"] < 0.8].copy()
-train_df.drop(["window", "windows_count"], axis=1, level=0, inplace=True)
+train_df.drop(["window", "windows_count"], axis=1, inplace=True)
 test_df = df_concat[df_concat["window"] / df_concat["windows_count"] >= 0.8].copy()
-test_df.drop(["window", "windows_count"], axis=1, level=0, inplace=True)
+test_df.drop(["window", "windows_count"], axis=1, inplace=True)
 print(train_df)
 print(test_df)
 
@@ -163,7 +169,7 @@ print(test_y)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Device:{device}")
 class CNN(nn.Module):
-    
+
 
 evaluate_model(svm_model, test_X, test_y)
 # %%
