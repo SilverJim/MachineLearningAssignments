@@ -22,7 +22,7 @@ if sys.modules.get("google.colab") is None:
 else:
     from google.colab import drive
     drive.mount("/content/drive")
-    data_path_prefix = "/content/drive/MyDrive/MachineLearningAssignments/Assignment3"
+    data_path_prefix = "/content/drive/MyDrive/MachineLearningAssignments/Assignment4"
 
 data_path = f"{data_path_prefix}/{data_filename}"
 
