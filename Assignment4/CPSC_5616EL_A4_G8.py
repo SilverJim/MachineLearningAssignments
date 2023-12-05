@@ -243,7 +243,7 @@ train_X_CNN = train_X.transpose(0, 2, 1)
 train_y_CNN = train_y
 test_X_CNN = test_X.transpose(0, 2, 1)
 test_y_CNN = test_y
-cnn_model = train_model(cnn_model, train_X_CNN, train_y_CNN)
+cnn_model = train_model(cnn_model, train_X_CNN, train_y_CNN, epochs=20, lr=0.001)
 def evaluate_model(model, X, y):
     predicted_y = model.predict(X)
     print(classification_report(y, predicted_y))
