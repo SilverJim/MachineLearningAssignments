@@ -255,8 +255,8 @@ evaluate_model(cnn_model, test_X_CNN, test_y_CNN)
 class GRU(nn.Module):
     def __init__(self):
         super(GRU, self).__init__()
-        self.gru = nn.GRU(13, 50, 1, batch_first=True)
-        self.fc1 = nn.Linear(50, 3)
+        self.gru = nn.GRU(13, 70, 1, batch_first=True)
+        self.fc1 = nn.Linear(70, 3)
         self.softmax = nn.Softmax(dim=1)
     def forward(self, x):
         x, _ = self.gru(x)
@@ -274,7 +274,7 @@ train_X_GRU = train_X
 train_y_GRU = train_y
 test_X_GRU = test_X
 test_y_GRU = test_y
-gru_model = train_model(gru_model, train_X_GRU, train_y_GRU, epochs=60)
+gru_model = train_model(gru_model, train_X_GRU, train_y_GRU, epochs=30)
 evaluate_model(gru_model, test_X_GRU, test_y_GRU)
 # %%
 class CNN_GRU(nn.Module):
