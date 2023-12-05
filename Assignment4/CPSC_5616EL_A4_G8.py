@@ -192,12 +192,12 @@ print(f"Device:{device}")
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
-        self.conv1 = nn.Conv1d(13, 32, 3, padding=1)
-        self.conv2 = nn.Conv1d(32, 64, 3, padding=1)
+        self.conv1 = nn.Conv1d(13, 30, 3, padding=1)
+        self.conv2 = nn.Conv1d(30, 60, 3, padding=1)
         self.pool = nn.MaxPool1d(2, 2)
-        self.fc1 = nn.Linear(64 * 50, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 3)
+        self.fc1 = nn.Linear(60 * 50, 120)
+        self.fc2 = nn.Linear(120, 80)
+        self.fc3 = nn.Linear(80, 3)
         self.softmax = nn.Softmax(dim=1)
         self.relu = nn.ReLU()
     def forward(self, x):
@@ -216,7 +216,7 @@ class CNN(nn.Module):
         return predicted.cpu().numpy()
 
 # Train the model with train_X and train_y
-def train_model(model, train_X, train_y, epochs=10, batch_size=32, lr=0.001):
+def train_model(model, train_X, train_y, epochs=10, batch_size=32, lr=0.01):
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
     model.to(device)
@@ -255,15 +255,13 @@ evaluate_model(cnn_model, test_X_CNN, test_y_CNN)
 class GRU(nn.Module):
     def __init__(self):
         super(GRU, self).__init__()
-        self.gru = nn.GRU(13, 64, 1, batch_first=True)
-        self.fc1 = nn.Linear(64, 128)
-        self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, 3)
+        self.gru = nn.GRU(13, 50, 1, batch_first=True)
+        self.fc1 = nn.Linear(50, 3)
+        self.softmax = nn.Softmax(dim=1)
     def forward(self, x):
         x, _ = self.gru(x)
         x = self.fc1(x[:, -1, :])
-        x = self.fc2(x)
-        x = self.fc3(x)
+        x = self.softmax(x)
         return x
     def predict(self, X):
         X = torch.tensor(X, dtype=torch.float32, device=device)
@@ -276,28 +274,26 @@ train_X_GRU = train_X
 train_y_GRU = train_y
 test_X_GRU = test_X
 test_y_GRU = test_y
-gru_model = train_model(gru_model, train_X_GRU, train_y_GRU, epochs=35)
+gru_model = train_model(gru_model, train_X_GRU, train_y_GRU, epochs=60)
 evaluate_model(gru_model, test_X_GRU, test_y_GRU)
 # %%
 class CNN_GRU(nn.Module):
     def __init__(self):
         super(CNN_GRU, self).__init__()
-        self.conv1 = nn.Conv1d(13, 32, 3, padding=1)
-        self.conv2 = nn.Conv1d(32, 64, 3, padding=1)
+        self.conv1 = nn.Conv1d(13, 30, 3, padding=1)
+        self.conv2 = nn.Conv1d(30, 60, 3, padding=1)
         self.pool = nn.MaxPool1d(2, 2)
-        self.gru = nn.GRU(64, 64, 2, batch_first=True)
-        self.fc1 = nn.Linear(64, 128)
-        self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, 3)
+        self.gru = nn.GRU(60, 20, 1, batch_first=True)
+        self.fc1 = nn.Linear(20, 3)
         self.relu = nn.ReLU()
+        self.softmax = nn.Softmax(dim=1)
     def forward(self, x):
         x = self.pool(self.relu(self.conv1(x)))
         x = self.pool(self.relu(self.conv2(x)))
         x = x.transpose(2, 1)
         x, _ = self.gru(x)
         x = self.fc1(x[:, -1, :])
-        x = self.fc2(x)
-        x = self.fc3(x)
+        x = self.softmax(x)
         return x
     def predict(self, X):
         X = torch.tensor(X, dtype=torch.float32, device=device)
@@ -311,6 +307,6 @@ train_X_CNN_GRU = train_X_CNN
 train_y_CNN_GRU = train_y_CNN
 test_X_CNN_GRU = test_X_CNN
 test_y_CNN_GRU = test_y_CNN
-cnn_gru_model = train_model(cnn_gru_model, train_X_CNN_GRU, train_y_CNN_GRU, epochs=30)
+cnn_gru_model = train_model(cnn_gru_model, train_X_CNN_GRU, train_y_CNN_GRU, epochs=50)
 evaluate_model(cnn_gru_model, test_X_CNN_GRU, test_y_CNN_GRU)
 # %%
